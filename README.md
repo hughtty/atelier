@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/logo.svg?v=2" width="140" height="140" alt="Atelier Logo">
+  <img src="assets/logo-atelier.svg?v=2" width="140" height="140" alt="Atelier Logo">
 </p>
 
 <p align="center">
