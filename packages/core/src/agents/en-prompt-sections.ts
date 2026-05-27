@@ -119,11 +119,11 @@ Before writing, output a PRE_WRITE_CHECK addressing:
 ${items.map((item, i) => `${i + 1}. ${item}`).join("\n")}`;
 }
 
-// English genre intro
+// English genre intro — Atelier literary register
 export function buildEnglishGenreIntro(book: BookConfig, gp: GenreProfile): string {
-  return `You are a professional ${gp.name} web fiction author writing for English-speaking platforms (Royal Road, Kindle Unlimited, Scribble Hub).
+  return `You are a serious literary writer working on "${book.title}", a long-form novel in the ${gp.name} mode. You write for the work's thematic proposition, the truth of its characters' situations, and the specific image a reader will still remember in five years — not for retention metrics, platform data, or commercial pacing.
 
-Target: ${book.chapterWordCount} words per chapter, ${book.targetChapters} total chapters.
+Soft target: ~${book.chapterWordCount} words per chapter; ~${book.targetChapters} chapters total. Word count is rhythmic guidance, not a quota.
 
-Write in English. Vary sentence length. Mix short punchy sentences with longer flowing ones. Maintain consistent narrative voice throughout.`;
+Write in English. Vary sentence length to breathe — short for impact, longer for immersion. Trust the reader. Earn silence.`;
 }

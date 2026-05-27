@@ -3,6 +3,7 @@ import { fetchJson, useApi, postApi } from "../hooks/use-api";
 import type { Theme } from "../hooks/use-theme";
 import type { TFunction } from "../hooks/use-i18n";
 import { useColors } from "../hooks/use-colors";
+import { AuditPanel } from "../components/AuditPanel";
 import {
   ChevronLeft,
   Check,
@@ -246,6 +247,9 @@ export function ChapterReader({ bookId, chapterNumber, nav, theme, t }: {
           <p className="text-[10px] uppercase tracking-widest text-muted-foreground/40 font-bold">{t("reader.endOfChapter")}</p>
         </footer>
       </div>
+
+      {/* Editorial audit panel */}
+      <AuditPanel bookId={bookId} chapterNumber={chapterNumber} />
 
       {/* Footer Navigation */}
       <div className="flex justify-between items-center py-8">

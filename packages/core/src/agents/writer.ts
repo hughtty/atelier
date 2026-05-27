@@ -31,6 +31,7 @@ import {
 import { extractPOVFromOutline, filterMatrixByPOV, filterHooksByPOV } from "../utils/pov-filter.js";
 import { parseCreativeOutput } from "./writer-parser.js";
 import { buildRuntimeStateArtifacts, saveRuntimeStateSnapshot, type RuntimeStateArtifacts } from "../state/runtime-state-store.js";
+import { loadLiteraryTruthBundle, formatLiteraryTruthContext } from "../state/literary-truth-context.js";
 import type { RuntimeStateSnapshot } from "../state/state-reducer.js";
 import { parsePendingHooksMarkdown } from "../utils/memory-retrieval.js";
 import { analyzeHookHealth } from "../utils/hook-health.js";
@@ -197,12 +198,23 @@ export class WriterAgent extends BaseAgent {
         }
       : undefined;
 
+    // Atelier: load the 6 literary truth files for this book and format them
+    // into a compact prompt section. Empty string when no truth files exist
+    // — the writer falls back to base prompt without literary scaffolding.
+    const literaryTruthSummary = await loadLiteraryTruthBundle(this.ctx.projectRoot, book.id);
+    const literaryTruthContext = formatLiteraryTruthContext(literaryTruthSummary, {
+      mode: "writing",
+      language: resolvedLanguage,
+      chapterNumber,
+    });
+
     // ── Phase 1: Creative writing (temperature 0.7) ──
     const creativeSystemPrompt = buildWriterSystemPrompt(
       book, genreProfile, bookRules, bookRulesBody, genreBody, styleGuide, styleFingerprint,
       chapterNumber, "creative", fanficContext, resolvedLanguage,
       input.chapterMemo ? "governed" : "legacy",
       resolvedLengthSpec,
+      literaryTruthContext,
     );
 
     const creativeUserPrompt = input.chapterMemo && input.contextPackage && input.ruleStack

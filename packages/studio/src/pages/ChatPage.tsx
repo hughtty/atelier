@@ -19,6 +19,7 @@ import {
 import { ChatMessage } from "../components/chat/ChatMessage";
 import { QuickActions } from "../components/chat/QuickActions";
 import { ToolExecutionSteps } from "../components/chat/ToolExecutionSteps";
+import { ToolResultCard } from "../components/chat/tool-result-cards";
 import {
   Loader2,
   BotMessageSquare,
@@ -44,6 +45,7 @@ import {
 interface Nav {
   toDashboard: () => void;
   toBook: (id: string) => void;
+  toBookSettings: (id: string) => void;
   toServices: () => void;
 }
 
@@ -254,12 +256,12 @@ export function ChatPage({ activeBookId, nav, theme, t, sse: _sse }: ChatPagePro
     : "Tell me what you want to write \u2014 genre, world, protagonist, core conflict";
 
   return (
-    <div className="flex flex-col h-full flex-1 min-w-0">
-      {/* Message scroll area */}
-      <div
-        ref={scrollRef}
-        className="chat-message-scroll flex-1 overflow-y-auto [scrollbar-gutter:stable] px-4 py-6"
-      >
+    <div className="flex flex-col h-full flex-1 min-w-0 relative">
+        {/* Message scroll area */}
+        <div
+          ref={scrollRef}
+          className="chat-message-scroll flex-1 overflow-y-auto [scrollbar-gutter:stable] px-4 py-6"
+        >
         {messages.length === 0 && !loading ? (
           <div className="h-full flex flex-col items-center justify-center text-center select-none">
             <div className="w-14 h-14 rounded-2xl border border-dashed border-border flex items-center justify-center mb-4 bg-secondary/30 opacity-40">
@@ -316,7 +318,32 @@ export function ChatPage({ activeBookId, nav, theme, t, sse: _sse }: ChatPagePro
                           );
                         }
                         if (item.kind === "tools") {
-                          return <ToolExecutionSteps key={`x-${item.startIdx}`} executions={item.parts.map(p => p.execution)} />;
+                          const execs = item.parts.map(p => p.execution);
+                          return (
+                            <div key={`x-${item.startIdx}`}>
+                              <ToolExecutionSteps executions={execs} />
+                              {/* Atelier: render rich result cards (chapter / audit / book) after the tool-step summary. */}
+                              {execs.map((exec) => (
+                                <ToolResultCard
+                                  key={`card-${exec.id}`}
+                                  execution={exec}
+                                  bookId={activeBookId}
+                                  onSendCommand={(cmd) => {
+                                    if (activeSessionId) {
+                                      void sendMessage(activeSessionId, cmd, activeBookId);
+                                    }
+                                  }}
+                                  onOpenChapter={(num) => {
+                                    if (activeBookId) {
+                                      // ChapterReader route exists; navigate via sendMessage natural language so the
+                                      // existing chat flow remains coherent.
+                                      void sendMessage(activeSessionId!, `查看第 ${num} 章正文`, activeBookId);
+                                    }
+                                  }}
+                                />
+                              ))}
+                            </div>
+                          );
                         }
                         if (item.kind === "text" && item.part.content) {
                           return (
@@ -426,6 +453,12 @@ export function ChatPage({ activeBookId, nav, theme, t, sse: _sse }: ChatPagePro
             </div>
         </div>
       </div>
+      {/*
+        Atelier note: the creative-bible reference panel now lives as a card
+        inside the existing BookSidebar (see CreativeBibleSection.tsx),
+        alongside chapters/characters/foundation. Keeps the chat column at
+        full width and avoids overlap with the top-right toolbar.
+      */}
     </div>
   );
 }

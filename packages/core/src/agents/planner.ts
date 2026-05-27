@@ -36,6 +36,7 @@ import {
   readSubplotBoard,
 } from "./planner-context.js";
 import type { StoredHook } from "../state/memory-db.js";
+import { loadLiteraryTruthBundle, formatLiteraryTruthContext } from "../state/literary-truth-context.js";
 
 export interface PlanChapterInput {
   readonly book: BookConfig;
@@ -130,6 +131,16 @@ export class PlannerAgent extends BaseAgent {
     });
 
     const isGoldenOpening = this.isGoldenOpeningChapter(input.book.language, input.chapterNumber);
+
+    // Atelier: load literary truth files and format as a compact context
+    // section. Empty when no truth files exist (graceful fallback).
+    const literaryTruthSummary = await loadLiteraryTruthBundle(this.ctx.projectRoot, input.book.id);
+    const literaryTruthContext = formatLiteraryTruthContext(literaryTruthSummary, {
+      mode: "writing",
+      language: input.book.language ?? "zh",
+      chapterNumber: input.chapterNumber,
+    });
+
     const memo = await this.planChapterMemo({
       storyDir,
       bookDir: input.bookDir,
@@ -145,6 +156,7 @@ export class PlannerAgent extends BaseAgent {
       // English prompts (system + user template + golden opening guidance)
       // for English books instead of always-Chinese.
       language: input.book.language ?? "zh",
+      literaryTruthContext,
     });
 
     // memo.goal is LLM-produced and specific (<=50 chars, validated).
@@ -189,6 +201,7 @@ export class PlannerAgent extends BaseAgent {
     readonly chapterContext?: string;
     readonly recyclableHooks?: ReadonlyArray<StoredHook>;
     readonly language?: "zh" | "en";
+    readonly literaryTruthContext?: string;
   }): Promise<ChapterMemo> {
     const [characterMatrix, subplotBoard, emotionalArcs, pendingHooks, bookRulesRaw] = await Promise.all([
       readCharacterMatrix(input.storyDir),
@@ -233,6 +246,7 @@ export class PlannerAgent extends BaseAgent {
       brief: input.brief ?? "",
       chapterContext: input.chapterContext ?? "",
       language,
+      literaryTruthContext: input.literaryTruthContext ?? "",
     });
 
     const systemPrompt = getPlannerMemoSystemPrompt(language);

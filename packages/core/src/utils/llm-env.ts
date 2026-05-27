@@ -3,8 +3,34 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { parse } from "dotenv";
 
-export const GLOBAL_CONFIG_DIR = join(homedir(), ".inkos");
+// Atelier prefers ~/.atelier/, falls back to ~/.inkos/ for backward compat.
+export const GLOBAL_CONFIG_DIR = join(homedir(), ".atelier");
 export const GLOBAL_ENV_PATH = join(GLOBAL_CONFIG_DIR, ".env");
+const LEGACY_GLOBAL_CONFIG_DIR = join(homedir(), ".inkos");
+const LEGACY_GLOBAL_ENV_PATH = join(LEGACY_GLOBAL_CONFIG_DIR, ".env");
+
+// Atelier env-var aliases. ATELIER_* takes precedence; INKOS_* preserved for
+// migration. Internal code reads INKOS_* keys, so aliasMap copies values
+// from ATELIER_* into INKOS_* when only the new name is present.
+const VAR_ALIASES: Readonly<Record<string, string>> = {
+  ATELIER_LLM_PROVIDER: "INKOS_LLM_PROVIDER",
+  ATELIER_LLM_SERVICE: "INKOS_LLM_SERVICE",
+  ATELIER_LLM_BASE_URL: "INKOS_LLM_BASE_URL",
+  ATELIER_LLM_API_KEY: "INKOS_LLM_API_KEY",
+  ATELIER_LLM_MODEL: "INKOS_LLM_MODEL",
+  ATELIER_LLM_API_FORMAT: "INKOS_LLM_API_FORMAT",
+  ATELIER_LLM_STREAM: "INKOS_LLM_STREAM",
+};
+
+function applyAtelierAliases(map: LLMEnvMap): LLMEnvMap {
+  const out: LLMEnvMap = { ...map };
+  for (const [src, dst] of Object.entries(VAR_ALIASES)) {
+    if (out[src] !== undefined && out[dst] === undefined) {
+      out[dst] = out[src];
+    }
+  }
+  return out;
+}
 
 export type LLMEnvMap = Record<string, string | undefined>;
 
@@ -18,15 +44,20 @@ export async function loadLLMEnvLayers(
   root: string,
   processEnv: NodeJS.ProcessEnv = process.env,
 ): Promise<LLMEnvLayers> {
-  const global = await parseEnvFile(GLOBAL_ENV_PATH);
-  const project = await parseEnvFile(join(root, ".env"));
+  // Read ~/.atelier/.env first; if absent, fall back to ~/.inkos/.env
+  let globalRaw = await parseEnvFile(GLOBAL_ENV_PATH);
+  if (Object.keys(globalRaw).length === 0) {
+    globalRaw = await parseEnvFile(LEGACY_GLOBAL_ENV_PATH);
+  }
+  const global = applyAtelierAliases(globalRaw);
+  const project = applyAtelierAliases(await parseEnvFile(join(root, ".env")));
   // Compatibility: modelOverrides.apiKeyEnv and detector config still read process.env directly.
   hydrateProcessEnvFromEnvFiles(processEnv, global, project);
 
   return {
     global,
     project,
-    process: { ...processEnv },
+    process: applyAtelierAliases({ ...processEnv } as LLMEnvMap),
   };
 }
 

@@ -2,7 +2,7 @@ import { Command } from "commander";
 import { access, readFile, rm } from "node:fs/promises";
 import { createInterface } from "node:readline";
 import { join, resolve } from "node:path";
-import { deriveBookIdFromTitle, normalizePlatformOrOther, PipelineRunner, StateManager, type BookConfig } from "@actalk/inkos-core";
+import { deriveBookIdFromTitle, normalizePlatformOrOther, PipelineRunner, StateManager, type BookConfig } from "@atelier/core";
 import {
   formatBookCreateCreated,
   formatBookCreateCreating,
@@ -20,10 +20,10 @@ bookCommand
   .command("create")
   .description("Create a new book with AI-generated foundation")
   .requiredOption("--title <title>", "Book title")
-  .option("--genre <genre>", "Genre", "xuanhuan")
-  .option("--platform <platform>", "Target platform", "tomato")
-  .option("--target-chapters <n>", "Target chapter count", "200")
-  .option("--chapter-words <n>", "Words per chapter", "3000")
+  .option("--genre <genre>", "Literary genre (social-realism, family-epic, psychological, existential, ecological, historical, urban-migration, rural-decline, other)", "social-realism")
+  .option("--platform <platform>", "Target platform (legacy field; not used in literary mode)", "other")
+  .option("--target-chapters <n>", "Target chapter count", "30")
+  .option("--chapter-words <n>", "Words per chapter (soft target)", "3500")
   .option("--brief <path>", "Path to creative brief file (.md/.txt) — Architect builds from your ideas instead of generating from scratch")
   .option("--lang <language>", "Writing language: zh (Chinese) or en (English). Defaults from genre.")
   .option("--json", "Output JSON")

@@ -12,12 +12,14 @@ import { FoundationSection } from "../sidebar/FoundationSection";
 import { SummarySection } from "../sidebar/SummarySection";
 import { ChaptersSection } from "../sidebar/ChaptersSection";
 import { CharacterSection } from "../sidebar/CharacterSection";
+import { CreativeBibleSection } from "../sidebar/CreativeBibleSection";
 
 export interface BookSidebarProps {
   readonly bookId: string;
   readonly theme: Theme;
   readonly t: TFunction;
   readonly sse: { messages: ReadonlyArray<SSEMessage>; connected: boolean };
+  readonly onOpenSettings?: (bookId: string) => void;
 }
 
 const FOUNDATION_LABELS: Record<string, string> = {
@@ -153,7 +155,7 @@ function ArtifactView({ bookId }: { readonly bookId: string }) {
   );
 }
 
-function PanelView({ bookId, theme: _theme, t, sse }: BookSidebarProps) {
+function PanelView({ bookId, theme: _theme, t, sse, onOpenSettings }: BookSidebarProps) {
   const isZh = t("nav.connected") === "\u5DF2\u8FDE\u63A5";
 
   // Show writing indicator only during pipeline operations (write/audit/revise)
@@ -195,6 +197,10 @@ function PanelView({ bookId, theme: _theme, t, sse }: BookSidebarProps) {
       <ProgressSection sse={sse} />
       <ChaptersSection bookId={bookId} isZh={isZh} />
       <CharacterSection bookId={bookId} />
+      <CreativeBibleSection
+        bookId={bookId}
+        onOpenSettings={() => onOpenSettings?.(bookId)}
+      />
       <FoundationSection bookId={bookId} />
       <SummarySection bookId={bookId} />
     </div>
@@ -209,7 +215,7 @@ function defaultSidebarWidth(): number {
   return Math.min(SIDEBAR_MAX, Math.max(SIDEBAR_MIN, Math.round(window.innerWidth * SIDEBAR_RATIO)));
 }
 
-export function BookSidebar({ bookId, theme, t, sse }: BookSidebarProps) {
+export function BookSidebar({ bookId, theme, t, sse, onOpenSettings }: BookSidebarProps) {
   const sidebarView = useChatStore((s) => s.sidebarView);
   const [width, setWidth] = useState(defaultSidebarWidth);
   const dragging = useRef(false);
@@ -246,7 +252,7 @@ export function BookSidebar({ bookId, theme, t, sse }: BookSidebarProps) {
       {sidebarView === "artifact" ? (
         <ArtifactView bookId={bookId} />
       ) : (
-        <PanelView bookId={bookId} theme={theme} t={t} sse={sse} />
+        <PanelView bookId={bookId} theme={theme} t={t} sse={sse} onOpenSettings={onOpenSettings} />
       )}
     </aside>
   );

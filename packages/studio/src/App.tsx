@@ -4,19 +4,19 @@ import type { HashRoute } from "./hooks/use-hash-route";
 import { Sidebar } from "./components/Sidebar";
 import { Dashboard } from "./pages/Dashboard";
 import { ChatPage } from "./pages/ChatPage";
-import { BookCreate } from "./pages/BookCreate";
-import { BookDetail } from "./pages/BookDetail";
+import { BookCreateWizard } from "./pages/BookCreateWizard";
+import { ChapterList } from "./pages/ChapterList";
 import { ChapterReader } from "./pages/ChapterReader";
 import { Analytics } from "./pages/Analytics";
 import { ServiceListPage } from "./pages/ServiceListPage";
 import { ServiceDetailPage } from "./pages/ServiceDetailPage";
 import { TruthFiles } from "./pages/TruthFiles";
-import { DaemonControl } from "./pages/DaemonControl";
+import { BookSettings } from "./pages/BookSettings";
+import type { StoryBibleTab } from "./hooks/use-hash-route";
 import { LogViewer } from "./pages/LogViewer";
 import { GenreManager } from "./pages/GenreManager";
 import { StyleManager } from "./pages/StyleManager";
 import { ImportManager } from "./pages/ImportManager";
-import { RadarView } from "./pages/RadarView";
 import { DoctorView } from "./pages/DoctorView";
 import { LanguageSelector } from "./pages/LanguageSelector";
 import { BookSidebar, BookSidebarToggle } from "./components/chat/BookSidebar";
@@ -76,12 +76,15 @@ export function App() {
     toServices: () => setRoute({ page: "services" }),
     toServiceDetail: (id: string) => setRoute({ page: "service-detail", serviceId: id }),
     toTruth: (bookId: string) => setRoute({ page: "truth", bookId }),
-    toDaemon: () => setRoute({ page: "daemon" }),
+    toBookChapters: (bookId: string) => setRoute({ page: "book-chapters", bookId }),
+    // BookSettings now hosts the 6 literary truth files (Story Bible).
+    // The legacy story-bible page is gone; routes flow through book-settings.
+    toBookSettingsTab: (bookId: string, tab: StoryBibleTab) =>
+      setRoute({ page: "book-settings", bookId, settingsTab: tab }),
     toLogs: () => setRoute({ page: "logs" }),
     toGenres: () => setRoute({ page: "genres" }),
     toStyle: () => setRoute({ page: "style" }),
     toImport: () => setRoute({ page: "import" }),
-    toRadar: () => setRoute({ page: "radar" }),
     toDoctor: () => setRoute({ page: "doctor" }),
   };
 
@@ -130,7 +133,7 @@ export function App() {
                <House size={14} />
                <span>首页</span>
                <span className="text-muted-foreground/70">/</span>
-               <span className="font-serif">InkOS Studio</span>
+               <span className="font-serif">Atelier Studio</span>
              </button>
           </div>
 
@@ -174,7 +177,7 @@ export function App() {
           )}
           {isStandaloneBookCreateRoute(route) && (
             <div className="max-w-4xl mx-auto px-6 py-12 md:px-12 lg:py-16 fade-in">
-              <BookCreate nav={nav} theme={theme} t={t} />
+              <BookCreateWizard nav={nav} theme={theme} t={t} />
             </div>
           )}
           {route.page === "book" && (
@@ -186,13 +189,24 @@ export function App() {
                 t={t}
                 sse={sse}
               />
-              <BookSidebar bookId={route.bookId} theme={theme} t={t} sse={sse} />
+              <BookSidebar
+                bookId={route.bookId}
+                theme={theme}
+                t={t}
+                sse={sse}
+                onOpenSettings={nav.toBookSettings}
+              />
               <BookSidebarToggle bookId={route.bookId} theme={theme} t={t} sse={sse} />
             </div>
           )}
-          {route.page === "book-settings" && (
+          {route.page === "book-chapters" && (
             <div className="max-w-4xl mx-auto px-6 py-12 md:px-12 lg:py-16 fade-in">
-              <BookDetail bookId={route.bookId} nav={nav} theme={theme} t={t} sse={sse} />
+              <ChapterList bookId={route.bookId} nav={nav} theme={theme} t={t} sse={sse} />
+            </div>
+          )}
+          {route.page === "book-settings" && (
+            <div className="max-w-5xl mx-auto px-6 py-12 md:px-12 lg:py-16 fade-in">
+              <BookSettings bookId={route.bookId} tab={route.settingsTab} nav={nav} theme={theme} />
             </div>
           )}
           {route.page === "chapter" && (
@@ -220,11 +234,6 @@ export function App() {
               <TruthFiles bookId={route.bookId} nav={nav} theme={theme} t={t} />
             </div>
           )}
-          {route.page === "daemon" && (
-            <div className="max-w-4xl mx-auto px-6 py-12 md:px-12 lg:py-16 fade-in">
-              <DaemonControl nav={nav} theme={theme} t={t} sse={sse} />
-            </div>
-          )}
           {route.page === "logs" && (
             <div className="max-w-4xl mx-auto px-6 py-12 md:px-12 lg:py-16 fade-in">
               <LogViewer nav={nav} theme={theme} t={t} />
@@ -243,11 +252,6 @@ export function App() {
           {route.page === "import" && (
             <div className="max-w-4xl mx-auto px-6 py-12 md:px-12 lg:py-16 fade-in">
               <ImportManager nav={nav} theme={theme} t={t} />
-            </div>
-          )}
-          {route.page === "radar" && (
-            <div className="max-w-4xl mx-auto px-6 py-12 md:px-12 lg:py-16 fade-in">
-              <RadarView nav={nav} theme={theme} t={t} />
             </div>
           )}
           {route.page === "doctor" && (

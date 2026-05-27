@@ -37,12 +37,17 @@ import {
   chatCompletion,
   buildExportArtifact,
   GLOBAL_ENV_PATH,
+  loadLiteraryTruthBundle,
+  readLiteraryTruthFile,
+  writeLiteraryTruthFile,
+  LITERARY_TRUTH_FILES,
+  type LiteraryTruthFileKey,
   type ResolvedModel,
   type PipelineConfig,
   type ProjectConfig,
   type LogSink,
   type LogEntry,
-} from "@actalk/inkos-core";
+} from "@atelier/core";
 import { access, readFile, readdir, writeFile } from "node:fs/promises";
 import { isAbsolute, join, relative, resolve } from "node:path";
 import { isSafeBookId } from "./safety.js";
@@ -893,7 +898,7 @@ export function createStudioServer(initialConfig: ProjectConfig, root: string) {
   // --- Genres ---
 
   app.get("/api/v1/genres", async (c) => {
-    const { listAvailableGenres, readGenreProfile } = await import("@actalk/inkos-core");
+    const { listAvailableGenres, readGenreProfile } = await import("@atelier/core");
     const rawGenres = await listAvailableGenres(root);
     const genres = await Promise.all(
       rawGenres.map(async (g) => {
@@ -919,6 +924,7 @@ export function createStudioServer(initialConfig: ProjectConfig, root: string) {
       chapterWordCount?: number;
       targetChapters?: number;
       blurb?: string;
+      force?: boolean;
     }>();
 
     const now = new Date().toISOString();
@@ -926,12 +932,35 @@ export function createStudioServer(initialConfig: ProjectConfig, root: string) {
     const bookId = bookConfig.id;
     const bookDir = state.bookDir(bookId);
 
+    // If force=true, blow away any existing book dir before recreating.
+    if (body.force) {
+      try {
+        const { rm } = await import("node:fs/promises");
+        await rm(bookDir, { recursive: true, force: true });
+        bookCreateStatus.delete(bookId);
+      } catch {
+        // best-effort; continue
+      }
+    }
+
     try {
       await access(join(bookDir, "book.json"));
-      await access(join(bookDir, "story", "story_bible.md"));
-      return c.json({ error: `Book "${bookId}" already exists` }, 409);
+      // book.json exists. If story_bible.md also exists → fully created.
+      // Otherwise it's a partial half-built state and we let creation continue.
+      try {
+        await access(join(bookDir, "story", "story_bible.md"));
+        // Fully created. Return structured payload so the wizard can decide
+        // whether to use it as-is or force-recreate.
+        return c.json({
+          error: `Book "${bookId}" already exists`,
+          existing: true,
+          bookId,
+        }, 409);
+      } catch {
+        // Half-built — let creation continue (architect will overwrite).
+      }
     } catch {
-      // The target book is not fully initialized yet, so creation can continue.
+      // No prior book on disk — clean creation.
     }
 
     broadcast("book:creating", { bookId, title: body.title });
@@ -975,10 +1004,19 @@ export function createStudioServer(initialConfig: ProjectConfig, root: string) {
   app.get("/api/v1/books/:id/create-status", async (c) => {
     const id = c.req.param("id");
     const status = bookCreateStatus.get(id);
-    if (!status) {
+    if (status) {
+      // Active creation in progress (or error state still latched).
+      return c.json(status);
+    }
+    // No in-memory status entry. Disambiguate by checking whether book.json
+    // exists on disk: present → architect finished and entry was cleaned up;
+    // absent → no such book / never created.
+    try {
+      await access(join(state.bookDir(id), "book.json"));
+      return c.json({ status: "ready" });
+    } catch {
       return c.json({ status: "missing" }, 404);
     }
-    return c.json(status);
   });
 
   // --- Chapters ---
@@ -1118,7 +1156,7 @@ export function createStudioServer(initialConfig: ProjectConfig, root: string) {
     // can warn users their edits won't reach the runtime.
     // Hotfix: only tag as legacy when the book actually HAS the new layout.
     // Pre-Phase-5 books use story_bible/book_rules as the authoritative source.
-    const { isNewLayoutBook } = await import("@actalk/inkos-core");
+    const { isNewLayoutBook } = await import("@atelier/core");
     const legacy = LEGACY_SHIM_FILES.has(file) && await isNewLayoutBook(bookDir);
 
     try {
@@ -1568,7 +1606,7 @@ export function createStudioServer(initialConfig: ProjectConfig, root: string) {
     }
 
     // Hotfix: only tag shim files as legacy when the book has the new layout.
-    const { isNewLayoutBook } = await import("@actalk/inkos-core");
+    const { isNewLayoutBook } = await import("@atelier/core");
     const newLayout = await isNewLayoutBook(bookDir);
 
     async function describe(relPath: string): Promise<{ readonly name: string; readonly size: number; readonly preview: string; readonly legacy?: true } | null> {
@@ -1615,7 +1653,7 @@ export function createStudioServer(initialConfig: ProjectConfig, root: string) {
 
   // --- Daemon control ---
 
-  let schedulerInstance: import("@actalk/inkos-core").Scheduler | null = null;
+  let schedulerInstance: import("@atelier/core").Scheduler | null = null;
 
   app.get("/api/v1/daemon", (c) => {
     return c.json({
@@ -1628,7 +1666,7 @@ export function createStudioServer(initialConfig: ProjectConfig, root: string) {
       return c.json({ error: "Daemon already running" }, 400);
     }
     try {
-      const { Scheduler } = await import("@actalk/inkos-core");
+      const { Scheduler } = await import("@atelier/core");
       const currentConfig = await loadCurrentProjectConfig();
       const scheduler = new Scheduler({
         ...(await buildPipelineConfig()),
@@ -2320,29 +2358,21 @@ export function createStudioServer(initialConfig: ProjectConfig, root: string) {
   app.post("/api/v1/books/:id/audit/:chapter", async (c) => {
     const id = c.req.param("id");
     const chapterNum = parseInt(c.req.param("chapter"), 10);
-    const bookDir = state.bookDir(id);
 
     broadcast("audit:start", { bookId: id, chapter: chapterNum });
     try {
-      const book = await state.loadBookConfig(id);
-      const chaptersDir = join(bookDir, "chapters");
-      const files = await readdir(chaptersDir);
-      const paddedNum = String(chapterNum).padStart(4, "0");
-      const match = files.find((f) => f.startsWith(paddedNum) && f.endsWith(".md"));
-      if (!match) return c.json({ error: "Chapter not found" }, 404);
-
-      const content = await readFile(join(chaptersDir, match), "utf-8");
-      const currentConfig = await loadCurrentProjectConfig();
-      const { ContinuityAuditor } = await import("@actalk/inkos-core");
-      const auditor = new ContinuityAuditor({
-        client: createLLMClient(currentConfig.llm),
-        model: currentConfig.llm.model,
-        projectRoot: root,
-        bookId: id,
-      });
-      const result = await auditor.auditChapter(bookDir, content, chapterNum, book.genre);
+      // Atelier: route through PipelineRunner.auditDraft so the result is
+      // layered with EditorialAuditor (continuity + literary 20-dim + ai-tells).
+      const pipeline = new PipelineRunner(await buildPipelineConfig());
+      const result = await pipeline.auditDraft(id, chapterNum);
       broadcast("audit:complete", { bookId: id, chapter: chapterNum, passed: result.passed });
-      return c.json(result);
+      // Surface the layered breakdown when present (EditorialAuditor result),
+      // otherwise return the plain audit result for backward compat.
+      const editorialFields = (result as { continuityIssues?: unknown; literaryIssues?: unknown; aiTellIssues?: unknown });
+      return c.json({
+        ...result,
+        layered: editorialFields.continuityIssues !== undefined,
+      });
     } catch (e) {
       broadcast("audit:error", { bookId: id, error: String(e) });
       return c.json({ error: String(e) }, 500);
@@ -2451,7 +2481,7 @@ export function createStudioServer(initialConfig: ProjectConfig, root: string) {
   app.get("/api/v1/genres/:id", async (c) => {
     const genreId = c.req.param("id");
     try {
-      const { readGenreProfile } = await import("@actalk/inkos-core");
+      const { readGenreProfile } = await import("@atelier/core");
       const { profile, body } = await readGenreProfile(root, genreId);
       return c.json({ profile, body });
     } catch (e) {
@@ -2465,7 +2495,7 @@ export function createStudioServer(initialConfig: ProjectConfig, root: string) {
       throw new ApiError(400, "INVALID_GENRE_ID", `Invalid genre ID: "${genreId}"`);
     }
     try {
-      const { getBuiltinGenresDir } = await import("@actalk/inkos-core");
+      const { getBuiltinGenresDir } = await import("@atelier/core");
       const { mkdir: mkdirFs, copyFile } = await import("node:fs/promises");
       const builtinDir = getBuiltinGenresDir();
       const projectGenresDir = join(root, "genres");
@@ -2526,7 +2556,7 @@ export function createStudioServer(initialConfig: ProjectConfig, root: string) {
       if (!match) return c.json({ error: "Chapter not found" }, 404);
 
       const content = await readFile(join(chaptersDir, match), "utf-8");
-      const { analyzeAITells } = await import("@actalk/inkos-core");
+      const { analyzeAITells } = await import("@atelier/core");
       const result = analyzeAITells(content);
       return c.json({ chapterNumber: chapterNum, ...result });
     } catch (e) {
@@ -2548,7 +2578,7 @@ export function createStudioServer(initialConfig: ProjectConfig, root: string) {
     // story_bible.md or book_rules.md does nothing at runtime (the pipeline
     // reads outline/ instead). For pre-Phase-5 books these ARE authoritative.
     if (LEGACY_SHIM_FILES.has(file)) {
-      const { isNewLayoutBook } = await import("@actalk/inkos-core");
+      const { isNewLayoutBook } = await import("@atelier/core");
       if (await isNewLayoutBook(bookDir)) {
         return c.json(
           { error: "Legacy compat shim; edit outline/story_frame.md instead" },
@@ -2562,6 +2592,212 @@ export function createStudioServer(initialConfig: ProjectConfig, root: string) {
     await mkdirFs(dirnameFs(resolved), { recursive: true });
     await writeFileFs(resolved, content, "utf-8");
     return c.json({ ok: true });
+  });
+
+  // =============================================
+  // Atelier Story Bible (literary truth files)
+  // =============================================
+
+  const LITERARY_KEYS = Object.keys(LITERARY_TRUTH_FILES) as ReadonlyArray<LiteraryTruthFileKey>;
+  function isLiteraryKey(k: string): k is LiteraryTruthFileKey {
+    return (LITERARY_KEYS as ReadonlyArray<string>).includes(k);
+  }
+
+  /** Returns availability + lightweight summary of all 6 literary truth files. */
+  app.get("/api/v1/books/:id/literary-truth", async (c) => {
+    const id = c.req.param("id");
+    if (!isSafeBookId(id)) return c.json({ error: "invalid book id" }, 400);
+    try {
+      const summary = await loadLiteraryTruthBundle(root, id);
+      const { bundle, availability, missingFiles, anyPresent } = summary;
+      const counts = {
+        thematic_value_tensions: bundle.thematic?.value_tensions.length ?? 0,
+        thematic_variations: bundle.thematic?.thematic_variations.length ?? 0,
+        characters_total: bundle.characters?.characters.length ?? 0,
+        characters_protagonists: bundle.characters?.characters.filter((ch) => ch.tier === "protagonist" || ch.tier === "co-lead").length ?? 0,
+        symbols_total: bundle.symbols?.core_images.length ?? 0,
+        social_locations: bundle.social?.geography.primary_locations.length ?? 0,
+        rhythm_chapters: bundle.rhythm?.chapter_rhythms.length ?? 0,
+        historical_anchors: bundle.historical?.policy_anchors.length ?? 0,
+      };
+      return c.json({
+        availability,
+        missingFiles,
+        anyPresent,
+        counts,
+      });
+    } catch (e) {
+      return c.json({ error: e instanceof Error ? e.message : String(e) }, 500);
+    }
+  });
+
+  /** Return the full JSON for one literary truth file. */
+  app.get("/api/v1/books/:id/literary-truth/:key", async (c) => {
+    const id = c.req.param("id");
+    const key = c.req.param("key");
+    if (!isSafeBookId(id)) return c.json({ error: "invalid book id" }, 400);
+    if (!isLiteraryKey(key)) return c.json({ error: "unknown literary truth key" }, 400);
+    try {
+      const data = await readLiteraryTruthFile(root, id, key);
+      if (data === null) return c.json({ key, exists: false, data: null });
+      return c.json({ key, exists: true, data });
+    } catch (e) {
+      return c.json({ error: e instanceof Error ? e.message : String(e) }, 500);
+    }
+  });
+
+  /**
+   * Re-generate one literary truth file by spawning the corresponding
+   * Atelier prep agent. Brief is read from `<book>/brief.md` or
+   * `<project>/brief.md`. The agent writes the result to disk and returns
+   * the freshly saved JSON. Long-running — caller should show progress UI.
+   */
+  app.post("/api/v1/books/:id/literary-truth/:key/regenerate", async (c) => {
+    const id = c.req.param("id");
+    const key = c.req.param("key");
+    if (!isSafeBookId(id)) return c.json({ error: "invalid book id" }, 400);
+    if (!isLiteraryKey(key)) return c.json({ error: "unknown literary truth key" }, 400);
+    if (key === "narrative_rhythm") {
+      return c.json({ error: "narrative_rhythm has no auto-generation agent yet; edit JSON manually" }, 400);
+    }
+
+    try {
+      // Locate brief
+      const bookDir = state.bookDir(id);
+      const candidates = [join(bookDir, "brief.md"), join(root, "brief.md")];
+      let brief: string | null = null;
+      for (const p of candidates) {
+        try {
+          brief = await readFile(p, "utf-8");
+          break;
+        } catch {}
+      }
+      if (!brief) {
+        return c.json({ error: "brief.md not found in book or project directory" }, 400);
+      }
+
+      const book = await state.loadBookConfig(id);
+      const pipeline = new PipelineRunner(await buildPipelineConfig());
+
+      const {
+        ThematicAnalystAgent,
+        CharacterPsychologistAgent,
+        SymbolWeaverAgent,
+        SocialTopologistAgent,
+        readThematicFramework: readTheme,
+        writeThematicFramework: writeTheme,
+        readCharacterPsychology: readChar,
+        writeCharacterPsychology: writeChar,
+        readSymbolicNetwork: readSym,
+        writeSymbolicNetwork: writeSym,
+        readSocialTopology: readSoc,
+        writeSocialTopology: writeSoc,
+        readHistoricalContext: readHist,
+        writeHistoricalContext: writeHist,
+      } = await import("@atelier/core");
+
+      const language = (book.language ?? "zh") as "zh" | "en";
+
+      switch (key) {
+        case "thematic_framework": {
+          const ctx = pipeline.buildAgentContext("thematic-analyst", id);
+          const agent = new ThematicAnalystAgent(ctx);
+          const prior = await readTheme(root, id);
+          const result = await agent.analyze({
+            brief,
+            bookTitle: book.title,
+            priorFramework: prior,
+            language,
+          });
+          await writeTheme(root, id, result.framework);
+          return c.json({ ok: true, key, data: result.framework });
+        }
+        case "character_psychology": {
+          const ctx = pipeline.buildAgentContext("character-psychologist", id);
+          const agent = new CharacterPsychologistAgent(ctx);
+          const prior = await readChar(root, id);
+          const thematic = await readTheme(root, id);
+          const result = await agent.analyze({
+            brief,
+            bookTitle: book.title,
+            thematicFramework: thematic,
+            priorPsychology: prior,
+            language,
+          });
+          await writeChar(root, id, result.psychology);
+          return c.json({ ok: true, key, data: result.psychology });
+        }
+        case "symbolic_network": {
+          const ctx = pipeline.buildAgentContext("symbol-weaver", id);
+          const agent = new SymbolWeaverAgent(ctx);
+          const prior = await readSym(root, id);
+          const thematic = await readTheme(root, id);
+          const result = await agent.weave({
+            brief,
+            bookTitle: book.title,
+            thematicFramework: thematic,
+            priorNetwork: prior,
+            language,
+          });
+          await writeSym(root, id, result.network);
+          return c.json({ ok: true, key, data: result.network });
+        }
+        case "social_topology":
+        case "historical_context": {
+          const ctx = pipeline.buildAgentContext("social-topologist", id);
+          const agent = new SocialTopologistAgent(ctx);
+          const priorTopology = await readSoc(root, id);
+          const priorHistorical = await readHist(root, id);
+          const thematic = await readTheme(root, id);
+          const result = await agent.map({
+            brief,
+            bookTitle: book.title,
+            thematicFramework: thematic,
+            priorTopology,
+            priorHistorical,
+            language,
+          });
+          await writeSoc(root, id, result.topology);
+          await writeHist(root, id, result.historical);
+          // Return only the file requested; the other is still updated on disk.
+          return c.json({
+            ok: true,
+            key,
+            data: key === "social_topology" ? result.topology : result.historical,
+            also_updated: key === "social_topology" ? "historical_context" : "social_topology",
+          });
+        }
+      }
+      return c.json({ error: "unreachable" }, 500);
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e);
+      return c.json({ error: message }, 500);
+    }
+  });
+
+  /** Save (Zod-validated) JSON for one literary truth file. */
+  app.put("/api/v1/books/:id/literary-truth/:key", async (c) => {
+    const id = c.req.param("id");
+    const key = c.req.param("key");
+    if (!isSafeBookId(id)) return c.json({ error: "invalid book id" }, 400);
+    if (!isLiteraryKey(key)) return c.json({ error: "unknown literary truth key" }, 400);
+    let body: { value: unknown };
+    try {
+      body = await c.req.json<{ value: unknown }>();
+    } catch {
+      return c.json({ error: "invalid JSON body" }, 400);
+    }
+    if (!body || typeof body.value !== "object") {
+      return c.json({ error: "request body must be { value: <object> }" }, 400);
+    }
+    try {
+      const path = await writeLiteraryTruthFile(root, id, key, body.value);
+      return c.json({ ok: true, path });
+    } catch (e) {
+      // Zod schema validation failures land here.
+      const message = e instanceof Error ? e.message : String(e);
+      return c.json({ error: message }, 400);
+    }
   });
 
   // =============================================
@@ -2665,7 +2901,7 @@ export function createStudioServer(initialConfig: ProjectConfig, root: string) {
       const chaptersDir = join(bookDir, "chapters");
       const files = await readdir(chaptersDir);
       const mdFiles = files.filter((f) => f.endsWith(".md") && /^\d{4}/.test(f)).sort();
-      const { analyzeAITells } = await import("@actalk/inkos-core");
+      const { analyzeAITells } = await import("@atelier/core");
 
       const results = await Promise.all(
         mdFiles.map(async (f) => {
@@ -2686,7 +2922,7 @@ export function createStudioServer(initialConfig: ProjectConfig, root: string) {
   app.get("/api/v1/books/:id/detect/stats", async (c) => {
     const id = c.req.param("id");
     try {
-      const { loadDetectionHistory, analyzeDetectionInsights } = await import("@actalk/inkos-core");
+      const { loadDetectionHistory, analyzeDetectionInsights } = await import("@atelier/core");
       const bookDir = state.bookDir(id);
       const history = await loadDetectionHistory(bookDir);
       const insights = analyzeDetectionInsights(history);
@@ -2801,7 +3037,7 @@ export function createStudioServer(initialConfig: ProjectConfig, root: string) {
     if (!text?.trim()) return c.json({ error: "text is required" }, 400);
 
     try {
-      const { analyzeStyle } = await import("@actalk/inkos-core");
+      const { analyzeStyle } = await import("@atelier/core");
       const profile = analyzeStyle(text, sourceName ?? "unknown");
       return c.json(profile);
     } catch (e) {
@@ -2837,7 +3073,7 @@ export function createStudioServer(initialConfig: ProjectConfig, root: string) {
 
     broadcast("import:start", { bookId: id, type: "chapters" });
     try {
-      const { splitChapters } = await import("@actalk/inkos-core");
+      const { splitChapters } = await import("@atelier/core");
       const chapters = [...splitChapters(text, splitRegex)];
 
       const pipeline = new PipelineRunner(await buildPipelineConfig());
@@ -2962,7 +3198,7 @@ export function createStudioServer(initialConfig: ProjectConfig, root: string) {
 
   app.get("/api/v1/doctor", async (c) => {
     const { existsSync } = await import("node:fs");
-    const { GLOBAL_ENV_PATH } = await import("@actalk/inkos-core");
+    const { GLOBAL_ENV_PATH } = await import("@atelier/core");
 
     const checks = {
       inkosJson: existsSync(join(root, "inkos.json")),
@@ -3050,6 +3286,6 @@ export async function startStudioServer(
     }
   }
 
-  console.log(`InkOS Studio running on http://localhost:${port}`);
+  console.log(`Atelier Studio running on http://localhost:${port}`);
   serve({ fetch: app.fetch, port });
 }

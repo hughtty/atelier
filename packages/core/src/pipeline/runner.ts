@@ -13,6 +13,8 @@ import { WriterAgent, type WriteChapterInput, type WriteChapterOutput } from "..
 import { LengthNormalizerAgent } from "../agents/length-normalizer.js";
 import { ChapterAnalyzerAgent } from "../agents/chapter-analyzer.js";
 import { ContinuityAuditor } from "../agents/continuity.js";
+import { EditorialAuditor } from "../agents/editorial-auditor.js";
+import { loadLiteraryTruthBundle } from "../state/literary-truth-context.js";
 import { ReviserAgent, DEFAULT_REVISE_MODE, type ReviseMode } from "../agents/reviser.js";
 import { StateValidatorAgent, type ValidationResult, type ValidationWarning } from "../agents/state-validator.js";
 import { RadarAgent } from "../agents/radar.js";
@@ -581,6 +583,17 @@ export class PipelineRunner {
     };
   }
 
+  /**
+   * Public access to the same AgentContext-construction the runner uses
+   * internally. CLI commands and external callers building one-off
+   * literary-foundation agents (ThematicAnalyst / CharacterPsychologist /
+   * SymbolWeaver / SocialTopologist) should call this rather than
+   * constructing an LLM client by hand.
+   */
+  buildAgentContext(agent: string, bookId?: string): AgentContext {
+    return this.agentCtxFor(agent, bookId);
+  }
+
   private async pathExists(path: string): Promise<boolean> {
     try {
       await stat(path);
@@ -1108,7 +1121,27 @@ export class PipelineRunner {
       chapterNumber: targetChapter,
       language,
     });
-    const result = evaluation.auditResult;
+    const continuityResult = evaluation.auditResult;
+
+    // Atelier: layer literary 20-dim audit + anti-AI-trace on top of continuity.
+    // Truth files are loaded best-effort; missing files just mean weaker context.
+    const literary = await loadLiteraryTruthBundle(this.config.projectRoot, bookId);
+    const editorial = new EditorialAuditor(this.agentCtxFor("editorial-auditor", bookId));
+    let result: AuditResult = continuityResult;
+    try {
+      const editorialResult = await editorial.audit({
+        book,
+        chapter: { number: targetChapter, title: `Chapter ${targetChapter}` } as ChapterMeta,
+        chapterContent: content,
+        thematicFramework: literary.bundle.thematic,
+        characterPsychology: literary.bundle.characters,
+        symbolicNetwork: literary.bundle.symbols,
+        continuityResult,
+      });
+      result = editorialResult;
+    } catch (e) {
+      this.config.logger?.warn?.(`[editorial-auditor] layer failed, falling back to continuity-only audit: ${String(e)}`);
+    }
 
     // Update index with audit result
     const index = await this.state.loadChapterIndex(bookId);

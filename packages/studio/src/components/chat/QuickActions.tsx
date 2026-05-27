@@ -1,8 +1,9 @@
 import {
-  Zap,
-  Search,
+  PenLine,
+  Layers,
+  RotateCcw,
+  ListChecks,
   FileOutput,
-  TrendingUp,
 } from "lucide-react";
 
 export interface QuickActionsProps {
@@ -19,34 +20,45 @@ interface ChipDef {
   readonly commandEn: string;
 }
 
+// Atelier literary-mode quick actions. The InkOS "市场雷达" chip
+// (Qidian/Fanqie market rankings) was removed — it has no place in literary
+// writing. These chips are dispatched as natural-language commands to the
+// agent, which routes to the appropriate tool.
 const CHIPS: ReadonlyArray<ChipDef> = [
   {
-    icon: <Zap size={12} />,
+    icon: <PenLine size={12} />,
     labelZh: "写下一章",
-    labelEn: "Write next",
+    labelEn: "Write next chapter",
     commandZh: "写下一章",
-    commandEn: "write next",
+    commandEn: "write next chapter",
   },
   {
-    icon: <Search size={12} />,
-    labelZh: "审计",
-    labelEn: "Audit",
-    commandZh: "审计",
-    commandEn: "audit",
+    icon: <Layers size={12} />,
+    labelZh: "审计上章",
+    labelEn: "Audit last chapter",
+    commandZh: "审计上一章",
+    commandEn: "audit the last chapter",
+  },
+  {
+    icon: <RotateCcw size={12} />,
+    labelZh: "修订上章",
+    labelEn: "Revise last chapter",
+    commandZh: "修订上一章关键问题",
+    commandEn: "revise the last chapter to fix critical issues",
+  },
+  {
+    icon: <ListChecks size={12} />,
+    labelZh: "章节进度",
+    labelEn: "Chapter status",
+    commandZh: "显示本书所有章节的状态",
+    commandEn: "show status of all chapters in this book",
   },
   {
     icon: <FileOutput size={12} />,
     labelZh: "导出",
     labelEn: "Export",
-    commandZh: "导出全书",
-    commandEn: "export book",
-  },
-  {
-    icon: <TrendingUp size={12} />,
-    labelZh: "市场雷达",
-    labelEn: "Market radar",
-    commandZh: "扫描市场趋势",
-    commandEn: "scan market trends",
+    commandZh: "导出全书为 markdown",
+    commandEn: "export the book as markdown",
   },
 ];
 

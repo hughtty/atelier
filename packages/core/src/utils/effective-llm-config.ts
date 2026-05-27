@@ -103,7 +103,7 @@ export async function resolveEffectiveLLMConfig(
     throw new Error(
       configMode === "studio-project"
         ? "Studio LLM API key not set. Open Studio services and save an API key for the selected service."
-        : "INKOS_LLM_API_KEY not set. Run 'inkos config set-global' or add it to project .env file.",
+        : "ATELIER_LLM_API_KEY (or legacy INKOS_LLM_API_KEY) not set. Run 'atelier config set-global' or add it to project .env file.",
     );
   }
 

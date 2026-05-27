@@ -67,16 +67,17 @@ export class LengthNormalizerAgent extends BaseAgent {
   }
 
   private buildSystemPrompt(mode: LengthNormalizeMode): string {
-    const action = mode === "compress"
-      ? "compress"
-      : "expand";
+    const action = mode === "compress" ? "微缩" : "微扩";
+    const verb = mode === "compress" ? "压缩" : "扩写";
 
-    return `你是一位章节长度修正器。你的任务是对章节正文做一次单次修正，只能执行一次，不得递归重写。
+    return `你是一位严肃文学的章节长度温和调整器。你的任务是对章节正文做一次单次${verb}，只能执行一次，不得递归重写。
 
-修正目标：
-- ${action} 章节长度到给定目标区间
-- 保留章节原有事实、关键钩子、角色名和必须保留的标记
-- 不要引入新的支线、未来揭示或额外总结
+文学性优先于字数：
+- 此次调整仅在原稿严重偏离区间时触发；目标是把它拉回**情绪节奏不再失控**的范围，而非精确匹配字数
+- ${action}时优先调整冗余信息或可压缩的描写；不要为了凑字数破坏意象网络、人物心理弧、留白处的省略
+- 保留所有事实、人物名、地点名、关键意象、对话潜台词、章末情绪余量
+- 不要引入新的支线、未来揭示、额外总结或解释性段落
+- 不要把留白填满；不要把诗意改成口水话；不要把节奏削平
 - 不要在正文外输出任何解释`;
   }
 

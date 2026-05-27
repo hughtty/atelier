@@ -426,11 +426,11 @@ export async function executeAgentTool(
       const book = {
         id: bookId,
         title,
-        platform: normalizePlatformOrOther(args.platform ?? "tomato"),
-        genre: ((args.genre as string) ?? "xuanhuan") as Genre,
+        platform: normalizePlatformOrOther(args.platform ?? "other"),
+        genre: ((args.genre as string) ?? "social-realism") as Genre,
         status: "outlining" as const,
-        targetChapters: 200,
-        chapterWordCount: 3000,
+        targetChapters: 30,
+        chapterWordCount: 3500,
         createdAt: now,
         updatedAt: now,
       };

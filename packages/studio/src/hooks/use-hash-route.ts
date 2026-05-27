@@ -2,21 +2,38 @@ import { useState, useEffect, useCallback } from "react";
 
 export type HashRoute =
   | { page: "dashboard" }
-  | { page: "book"; bookId: string }
-  | { page: "book-settings"; bookId: string }
+  | { page: "book"; bookId: string }                                       // chat workbench
+  | { page: "book-chapters"; bookId: string }                              // read-only chapter list
+  | { page: "book-settings"; bookId: string; settingsTab?: StoryBibleTab } // truth files + basic info
   | { page: "book-create" }
   | { page: "services" }
   | { page: "service-detail"; serviceId: string }
-  | { page: "chapter"; bookId: string; chapterNumber: number }
+  | { page: "chapter"; bookId: string; chapterNumber: number }             // single-chapter reader
   | { page: "analytics"; bookId: string }
   | { page: "truth"; bookId: string }
-  | { page: "daemon" }
   | { page: "logs" }
   | { page: "genres" }
   | { page: "style" }
   | { page: "import" }
-  | { page: "radar" }
   | { page: "doctor" };
+
+/** The 6 Atelier literary truth-file tabs on the Story Bible page. */
+export type StoryBibleTab =
+  | "thematic"
+  | "character"
+  | "symbol"
+  | "social"
+  | "rhythm"
+  | "historical";
+
+export const STORY_BIBLE_TABS: ReadonlyArray<StoryBibleTab> = [
+  "thematic",
+  "character",
+  "symbol",
+  "social",
+  "rhythm",
+  "historical",
+];
 
 function parseHash(hash: string): HashRoute {
   const path = hash.replace(/^#\/?/, "");
@@ -28,8 +45,17 @@ function parseHash(hash: string): HashRoute {
   const serviceMatch = path.match(/^services\/([^/]+)$/);
   if (serviceMatch) return { page: "service-detail", serviceId: decodeURIComponent(serviceMatch[1]) };
 
-  const bookSettingsMatch = path.match(/^book\/([^/]+)\/settings$/);
-  if (bookSettingsMatch) return { page: "book-settings", bookId: decodeURIComponent(bookSettingsMatch[1]) };
+  const bookChaptersMatch = path.match(/^book\/([^/]+)\/chapters$/);
+  if (bookChaptersMatch) return { page: "book-chapters", bookId: decodeURIComponent(bookChaptersMatch[1]) };
+
+  const bookSettingsMatch = path.match(/^book\/([^/]+)\/settings(?:\/([^/]+))?$/);
+  if (bookSettingsMatch) {
+    const tabRaw = bookSettingsMatch[2];
+    const settingsTab = tabRaw && (STORY_BIBLE_TABS as ReadonlyArray<string>).includes(tabRaw)
+      ? (tabRaw as StoryBibleTab)
+      : undefined;
+    return { page: "book-settings", bookId: decodeURIComponent(bookSettingsMatch[1]), settingsTab };
+  }
 
   const bookMatch = path.match(/^book\/([^/]+)$/);
   if (bookMatch) return { page: "book", bookId: decodeURIComponent(bookMatch[1]) };
@@ -41,7 +67,11 @@ function routeToHash(route: HashRoute): string {
   switch (route.page) {
     case "dashboard": return "#/";
     case "book": return `#/book/${encodeURIComponent(route.bookId)}`;
-    case "book-settings": return `#/book/${encodeURIComponent(route.bookId)}/settings`;
+    case "book-chapters": return `#/book/${encodeURIComponent(route.bookId)}/chapters`;
+    case "book-settings": {
+      const base = `#/book/${encodeURIComponent(route.bookId)}/settings`;
+      return route.settingsTab ? `${base}/${route.settingsTab}` : base;
+    }
     case "book-create": return "#/book/new";
     case "services": return "#/services";
     case "service-detail": return `#/services/${encodeURIComponent(route.serviceId)}`;
@@ -51,7 +81,7 @@ function routeToHash(route: HashRoute): string {
 
 export { parseHash, routeToHash }; // for testing
 
-const HASH_PAGES = new Set(["dashboard", "book", "book-settings", "book-create", "services", "service-detail"]);
+const HASH_PAGES = new Set(["dashboard", "book", "book-chapters", "book-settings", "book-create", "services", "service-detail"]);
 
 export function useHashRoute() {
   const [route, setRouteState] = useState<HashRoute>(() => parseHash(window.location.hash));

@@ -2,7 +2,7 @@ import { Command } from "commander";
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { findProjectRoot, log, logError, GLOBAL_CONFIG_DIR, GLOBAL_ENV_PATH } from "../utils.js";
-import { listModelsForService } from "@actalk/inkos-core";
+import { listModelsForService } from "@atelier/core";
 
 export const configCommand = new Command("config")
   .description("Manage project configuration");
@@ -88,8 +88,8 @@ configCommand
 
 configCommand
   .command("set-global")
-  .description("Set global LLM config (~/.inkos/.env), shared by all projects")
-  .requiredOption("--provider <provider>", "LLM provider (openai / anthropic)")
+  .description("Set global LLM config (~/.atelier/.env, falls back to ~/.inkos/.env), shared by all projects")
+  .requiredOption("--provider <provider>", "LLM provider (openai / anthropic / etc.)")
   .requiredOption("--base-url <url>", "API base URL")
   .requiredOption("--api-key <key>", "API key")
   .requiredOption("--model <model>", "Model name")
@@ -102,17 +102,19 @@ configCommand
     try {
       await mkdir(GLOBAL_CONFIG_DIR, { recursive: true });
 
+      // Write both ATELIER_* (preferred) and INKOS_* (legacy) for forward
+      // and backward compatibility — internal readers accept either.
       const lines = [
-        "# InkOS Global LLM Configuration",
-        `INKOS_LLM_PROVIDER=${opts.provider}`,
-        `INKOS_LLM_BASE_URL=${opts.baseUrl}`,
-        `INKOS_LLM_API_KEY=${opts.apiKey}`,
-        `INKOS_LLM_MODEL=${opts.model}`,
+        "# Atelier Global LLM Configuration",
+        `ATELIER_LLM_PROVIDER=${opts.provider}`,
+        `ATELIER_LLM_BASE_URL=${opts.baseUrl}`,
+        `ATELIER_LLM_API_KEY=${opts.apiKey}`,
+        `ATELIER_LLM_MODEL=${opts.model}`,
       ];
-      if (opts.temperature) lines.push(`INKOS_LLM_TEMPERATURE=${opts.temperature}`);
-      if (opts.thinkingBudget) lines.push(`INKOS_LLM_THINKING_BUDGET=${opts.thinkingBudget}`);
-      if (opts.apiFormat) lines.push(`INKOS_LLM_API_FORMAT=${opts.apiFormat}`);
-      if (opts.lang) lines.push(`INKOS_DEFAULT_LANGUAGE=${opts.lang}`);
+      if (opts.temperature) lines.push(`ATELIER_LLM_TEMPERATURE=${opts.temperature}`);
+      if (opts.thinkingBudget) lines.push(`ATELIER_LLM_THINKING_BUDGET=${opts.thinkingBudget}`);
+      if (opts.apiFormat) lines.push(`ATELIER_LLM_API_FORMAT=${opts.apiFormat}`);
+      if (opts.lang) lines.push(`ATELIER_DEFAULT_LANGUAGE=${opts.lang}`);
 
       await writeFile(GLOBAL_ENV_PATH, lines.join("\n") + "\n", "utf-8");
       log(`Global config saved to ${GLOBAL_ENV_PATH}`);
@@ -125,17 +127,17 @@ configCommand
 
 configCommand
   .command("show-global")
-  .description("Show global LLM config (~/.inkos/.env)")
+  .description("Show global LLM config (~/.atelier/.env, falls back to ~/.inkos/.env)")
   .action(async () => {
     try {
       const content = await readFile(GLOBAL_ENV_PATH, "utf-8");
       const masked = content.replace(
-        /(INKOS_LLM_API_KEY=)(.{8})(.*)(.{4})/,
+        /((?:ATELIER|INKOS)_LLM_API_KEY=)(.{8})(.*)(.{4})/g,
         "$1$2...$4",
       );
       log(masked);
     } catch {
-      log("No global config found. Run 'inkos config set-global' to create one.");
+      log("No global config found. Run 'atelier config set-global' to create one.");
     }
   });
 

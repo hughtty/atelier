@@ -86,8 +86,8 @@ describe("hash route", () => {
     });
 
     it("non-hash pages return empty string", () => {
-      expect(routeToHash({ page: "daemon" })).toBe("");
       expect(routeToHash({ page: "logs" })).toBe("");
+      expect(routeToHash({ page: "doctor" })).toBe("");
     });
   });
 });

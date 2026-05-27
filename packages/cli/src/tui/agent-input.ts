@@ -4,7 +4,7 @@ import {
   createLLMClient,
   runAgentSession,
   type InteractionSession,
-} from "@actalk/inkos-core";
+} from "@atelier/core";
 import { persistProjectSession } from "./session-store.js";
 import { buildPipelineConfig, loadConfig } from "../utils.js";
 
@@ -17,7 +17,7 @@ export async function processTuiAgentInput(params: {
 }) {
   const config = await loadConfig({ requireApiKey: false, projectRoot: params.projectRoot });
   const client = createLLMClient(config.llm);
-  const pipeline = new (await import("@actalk/inkos-core")).PipelineRunner(
+  const pipeline = new (await import("@atelier/core")).PipelineRunner(
     buildPipelineConfig(config, params.projectRoot, { quiet: true }),
   );
   const userTimestamp = Date.now();
@@ -226,11 +226,15 @@ function inferPlatform(instruction: string): "tomato" | "feilu" | "qidian" | "ot
 }
 
 function inferGenre(instruction: string): string {
-  if (/都市/.test(instruction)) return "urban";
-  if (/悬疑|推理|mystery/i.test(instruction)) return "mystery";
-  if (/玄幻|xuanhuan/i.test(instruction)) return "xuanhuan";
-  if (/科幻|sci[-\s]?fi/i.test(instruction)) return "sci-fi";
-  if (/言情|甜宠|romance/i.test(instruction)) return "romance";
+  // Atelier literary heuristics — match the 8 built-in literary genre ids
+  if (/家族|代际|家史|家族史/.test(instruction)) return "family-epic";
+  if (/心理|创伤|意识流|心灵|内心/.test(instruction)) return "psychological";
+  if (/存在|荒诞|存在主义|意义/.test(instruction)) return "existential";
+  if (/生态|环境|自然|物种|河流|气候/.test(instruction)) return "ecological";
+  if (/历史|年代|时代|往事|岁月/.test(instruction)) return "historical";
+  if (/打工|进城|城中村|外来|迁徙|流动/.test(instruction)) return "urban-migration";
+  if (/乡土|乡村|村庄|留守|农村/.test(instruction)) return "rural-decline";
+  if (/现实|社会|阶层|阶级|贫富|底层/.test(instruction)) return "social-realism";
   return "other";
 }
 

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useApi } from "../hooks/use-api";
+import { useApi, fetchJson } from "../hooks/use-api";
 import type { SSEMessage } from "../hooks/use-sse";
 import { applyBookCollectionEvent, shouldRefetchBookCollections, shouldRefetchDaemonStatus } from "../hooks/use-book-activity";
 import type { TFunction } from "../hooks/use-i18n";
@@ -48,14 +48,14 @@ interface BookSummary {
 interface Nav {
   toDashboard: () => void;
   toBook: (id: string) => void;
+  toBookChapters: (id: string) => void;
+  toBookSettings: (id: string) => void;
   toBookCreate: () => void;
   toServices: () => void;
-  toDaemon: () => void;
   toLogs: () => void;
   toGenres: () => void;
   toStyle: () => void;
   toImport: () => void;
-  toRadar: () => void;
   toDoctor: () => void;
 }
 
@@ -80,6 +80,8 @@ export function Sidebar({ nav, activePage, sse, t }: {
   const [renameTarget, setRenameTarget] = useState<{ sessionId: string; currentTitle: string } | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<{ sessionId: string; title: string } | null>(null);
+  const [deleteBookTarget, setDeleteBookTarget] = useState<{ bookId: string; title: string } | null>(null);
+  const [deletingBook, setDeletingBook] = useState(false);
   const [expandedBooks, setExpandedBooks] = useState<Set<string>>(new Set());
 
   const books = data?.books ?? [];
@@ -184,7 +186,7 @@ export function Sidebar({ nav, activePage, sse, t }: {
             <ScrollText size={18} />
           </div>
           <div className="flex flex-col">
-            <span className="font-serif text-xl leading-none italic font-medium">InkOS</span>
+            <span className="font-serif text-xl leading-none italic font-medium">Atelier</span>
             <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground font-bold mt-1">Studio</span>
           </div>
         </button>
@@ -214,7 +216,7 @@ export function Sidebar({ nav, activePage, sse, t }: {
               const isExpanded = expandedBooks.has(book.id);
               return (
                 <div key={book.id}>
-                  {/* 书名行：点击展开折叠，双击进入书 */}
+                  {/* 书名行：点击展开折叠；右侧出现 章节 / 设置 快捷图标 */}
                   <div className="group/book flex items-center">
                     <button
                       type="button"
@@ -230,6 +232,44 @@ export function Sidebar({ nav, activePage, sse, t }: {
                       <FolderOpen size={14} className="shrink-0 text-muted-foreground/60" />
                       <span className="truncate flex-1 text-left">{book.title}</span>
                     </button>
+                    {/* Quick links to the right of the title row.
+                        Always visible when the book is active or hovered. */}
+                    <div className={`flex items-center gap-0.5 pr-1.5 ${isActiveBook ? "opacity-100" : "opacity-0 group-hover/book:opacity-100"} transition-opacity`}>
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); nav.toBookChapters(book.id); }}
+                        className="p-1 rounded text-muted-foreground/70 hover:text-foreground hover:bg-secondary/40 transition-colors"
+                        title="章节列表（纯阅览）"
+                      >
+                        <ScrollText size={12} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); nav.toBookSettings(book.id); }}
+                        className="p-1 rounded text-muted-foreground/70 hover:text-foreground hover:bg-secondary/40 transition-colors"
+                        title="书籍设置（基本信息 + 创作圣经）"
+                      >
+                        <Settings size={12} />
+                      </button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger
+                          onClick={(e) => e.stopPropagation()}
+                          className="p-1 rounded text-muted-foreground/70 hover:text-foreground hover:bg-secondary/40 transition-colors outline-none"
+                          title="更多"
+                        >
+                          <MoreHorizontal size={12} />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent side="right" align="start" className="w-40">
+                          <DropdownMenuItem
+                            variant="destructive"
+                            onClick={() => setDeleteBookTarget({ bookId: book.id, title: book.title })}
+                          >
+                            <Trash2 size={14} />
+                            <span>删除本书…</span>
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
                   </div>
 
                   {/* 展开后才显示 session 列表 + 新建按钮 */}
@@ -329,14 +369,6 @@ export function Sidebar({ nav, activePage, sse, t }: {
               active={activePage === "services"}
               onClick={nav.toServices}
             />
-{/*            <SidebarItem
-              label={t("nav.daemon")}
-              icon={<Zap size={16} />}
-              active={activePage === "daemon"}
-              onClick={nav.toDaemon}
-              badge={daemon?.running ? t("nav.running") : undefined}
-              badgeColor={daemon?.running ? "bg-emerald-500/10 text-emerald-500" : "bg-muted text-muted-foreground"}
-            />*/}
             <SidebarItem
               label={t("nav.logs")}
               icon={<Terminal size={16} />}
@@ -365,12 +397,6 @@ export function Sidebar({ nav, activePage, sse, t }: {
               icon={<FileInput size={16} />}
               active={activePage === "import"}
               onClick={nav.toImport}
-            />
-            <SidebarItem
-              label={t("nav.radar")}
-              icon={<TrendingUp size={16} />}
-              active={activePage === "radar"}
-              onClick={nav.toRadar}
             />
             <SidebarItem
               label={t("nav.doctor")}
@@ -456,6 +482,41 @@ export function Sidebar({ nav, activePage, sse, t }: {
         variant="danger"
         onConfirm={() => void handleDeleteConfirm()}
         onCancel={() => setDeleteTarget(null)}
+      />
+
+      {/* Book deletion confirm (Sidebar quick entry — destructive) */}
+      <ConfirmDialog
+        open={deleteBookTarget !== null}
+        title="永久删除这本书？"
+        message={`将从磁盘移除《${deleteBookTarget?.title ?? ""}》的所有章节、真相文件、快照和会话。\n此操作不可撤销。\n（如果只是想暂停，请到「书籍设置」改状态而不是删除。）`}
+        confirmLabel={deletingBook ? "删除中..." : "永久删除"}
+        cancelLabel="取消"
+        variant="danger"
+        onConfirm={async () => {
+          if (!deleteBookTarget) return;
+          setDeletingBook(true);
+          try {
+            const resp = await fetchJson<{ ok?: boolean; error?: string }>(
+              `/books/${encodeURIComponent(deleteBookTarget.bookId)}`,
+              { method: "DELETE" },
+            );
+            if (resp.error) {
+              alert(`删除失败：${resp.error}`);
+            } else {
+              setDeleteBookTarget(null);
+              refetchBooks();
+              // If user was on this book's page, send them back to dashboard.
+              if (activePage === `book:${deleteBookTarget.bookId}`) {
+                nav.toDashboard();
+              }
+            }
+          } catch (e) {
+            alert(`删除失败：${e instanceof Error ? e.message : String(e)}`);
+          } finally {
+            setDeletingBook(false);
+          }
+        }}
+        onCancel={() => setDeleteBookTarget(null)}
       />
     </aside>
   );

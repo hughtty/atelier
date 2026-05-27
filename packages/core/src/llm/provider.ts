@@ -361,7 +361,7 @@ function wrapLLMError(error: unknown, context?: { readonly baseUrl?: string; rea
   }
   if (msg.includes("401")) {
     return new Error(
-      `API 返回 401 (未授权)。请检查 .env 中的 INKOS_LLM_API_KEY 是否正确。${ctxLine}`,
+      `API 返回 401 (未授权)。请检查 .env 中的 ATELIER_LLM_API_KEY (或旧名 INKOS_LLM_API_KEY) 是否正确。${ctxLine}`,
     );
   }
   if (msg.includes("429")) {

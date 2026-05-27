@@ -14,8 +14,8 @@ const {
   buildPipelineConfigMock: vi.fn(),
 }));
 
-vi.mock("@actalk/inkos-core", async () => {
-  const actual = await vi.importActual<typeof import("@actalk/inkos-core")>("@actalk/inkos-core");
+vi.mock("@atelier/core", async () => {
+  const actual = await vi.importActual<typeof import("@atelier/core")>("@atelier/core");
   class PipelineRunnerMock {
     constructor(_config: unknown) {}
     async initBook(_book: unknown, _options?: unknown) {}
@@ -158,7 +158,7 @@ describe("tui agent session bridge", () => {
 
   it("routes explicit create-book instructions directly to shared book creation", async () => {
     const initBookSpy = vi.spyOn(
-      (await import("@actalk/inkos-core")).PipelineRunner.prototype as any,
+      (await import("@atelier/core")).PipelineRunner.prototype as any,
       "initBook",
     );
     const { processTuiAgentInput } = await import("../tui/agent-input.js");

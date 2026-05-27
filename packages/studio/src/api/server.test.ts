@@ -120,8 +120,8 @@ const logger = {
   error: vi.fn(),
 };
 
-vi.mock("@actalk/inkos-core", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@actalk/inkos-core")>();
+vi.mock("@atelier/core", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@atelier/core")>();
 
   class MockSessionAlreadyMigratedError extends Error {
     constructor(message = "Session already migrated") {
@@ -445,7 +445,7 @@ describe("createStudioServer daemon lifecycle", () => {
   });
 
   it("uses the real core bookId validator in the Studio safety mock", async () => {
-    const { isSafeBookId } = await import("@actalk/inkos-core");
+    const { isSafeBookId } = await import("@atelier/core");
 
     expect(vi.isMockFunction(isSafeBookId)).toBe(false);
     expect(isSafeBookId("demo-book")).toBe(true);

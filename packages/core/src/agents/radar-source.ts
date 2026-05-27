@@ -1,3 +1,14 @@
+/**
+ * Atelier deprecation stub.
+ *
+ * The radar / platform-ranking subsystem was removed during the InkOS →
+ * Atelier refactor (Qidian / Fanqie / TextRadar are commercial-web-novel
+ * platforms, not applicable to serious-literary writing). This file
+ * preserves the symbol surface so deeper-pipeline imports still type-check.
+ * None of these classes should be invoked at runtime in Atelier's literary
+ * pipeline; they will throw if called.
+ */
+
 export interface RankingEntry {
   readonly title: string;
   readonly author: string;
@@ -10,114 +21,30 @@ export interface PlatformRankings {
   readonly entries: ReadonlyArray<RankingEntry>;
 }
 
-/**
- * Pluggable data source for the Radar agent.
- * Implement this interface to feed custom ranking/trend data
- * (e.g. from OpenClaw, custom scrapers, paid APIs).
- */
 export interface RadarSource {
-  readonly name: string;
+  readonly id: string;
   fetch(): Promise<PlatformRankings>;
 }
 
-/**
- * Wraps raw natural language text as a radar source.
- * Use this to inject external analysis (e.g. from OpenClaw) into the radar pipeline.
- */
+const NOT_SUPPORTED = "Platform-ranking sources are not supported in Atelier (literary mode).";
+
 export class TextRadarSource implements RadarSource {
-  readonly name: string;
-  private readonly text: string;
-
-  constructor(text: string, name = "external") {
-    this.name = name;
-    this.text = text;
-  }
-
+  readonly id = "text";
   async fetch(): Promise<PlatformRankings> {
-    return {
-      platform: this.name,
-      entries: [{ title: this.text, author: "", category: "", extra: "[外部分析]" }],
-    };
+    throw new Error(NOT_SUPPORTED);
   }
 }
 
-// ---------------------------------------------------------------------------
-// Built-in sources
-// ---------------------------------------------------------------------------
-
-const FANQIE_RANK_TYPES = [
-  { sideType: 10, label: "热门榜" },
-  { sideType: 13, label: "黑马榜" },
-] as const;
-
 export class FanqieRadarSource implements RadarSource {
-  readonly name = "fanqie";
-
+  readonly id = "fanqie";
   async fetch(): Promise<PlatformRankings> {
-    const entries: RankingEntry[] = [];
-
-    for (const { sideType, label } of FANQIE_RANK_TYPES) {
-      try {
-        const url = `https://api-lf.fanqiesdk.com/api/novel/channel/homepage/rank/rank_list/v2/?aid=13&limit=15&offset=0&side_type=${sideType}`;
-        const res = await globalThis.fetch(url, {
-          headers: { "User-Agent": "Mozilla/5.0 (compatible; InkOS/0.1)" },
-        });
-        if (!res.ok) continue;
-        const data = (await res.json()) as Record<string, unknown>;
-        const list = (data as { data?: { result?: unknown[] } }).data?.result;
-        if (!Array.isArray(list)) continue;
-
-        for (const item of list) {
-          const rec = item as Record<string, unknown>;
-          entries.push({
-            title: String(rec.book_name ?? ""),
-            author: String(rec.author ?? ""),
-            category: String(rec.category ?? ""),
-            extra: `[${label}]`,
-          });
-        }
-      } catch {
-        // skip on network error
-      }
-    }
-
-    return { platform: "番茄小说", entries };
+    throw new Error(NOT_SUPPORTED);
   }
 }
 
 export class QidianRadarSource implements RadarSource {
-  readonly name = "qidian";
-
+  readonly id = "qidian";
   async fetch(): Promise<PlatformRankings> {
-    const entries: RankingEntry[] = [];
-
-    try {
-      const url = "https://www.qidian.com/rank/";
-      const res = await globalThis.fetch(url, {
-        headers: {
-          "User-Agent":
-            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        },
-      });
-      if (!res.ok) return { platform: "起点中文网", entries };
-      const html = await res.text();
-
-      const bookPattern =
-        /<a[^>]*href="\/\/book\.qidian\.com\/info\/(\d+)"[^>]*>([^<]+)<\/a>/g;
-      let match: RegExpExecArray | null;
-      const seen = new Set<string>();
-      while ((match = bookPattern.exec(html)) !== null) {
-        const title = match[2].trim();
-        if (title && !seen.has(title) && title.length > 1 && title.length < 30) {
-          seen.add(title);
-          entries.push({ title, author: "", category: "", extra: "[起点热榜]" });
-        }
-        if (entries.length >= 20) break;
-      }
-    } catch {
-      // skip on network error
-    }
-
-    return { platform: "起点中文网", entries };
+    throw new Error(NOT_SUPPORTED);
   }
 }

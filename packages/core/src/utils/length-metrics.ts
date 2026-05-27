@@ -2,9 +2,15 @@ import type { LengthCountingMode, LengthNormalizeMode, LengthSpec } from "../mod
 
 export type LengthLanguage = "zh" | "en";
 
+// Atelier (literary) length policy: chapter length is rhythmic, not commercial.
+// Soft range is wide (±35%) — within it the normalizer never fires.
+// Hard range is wider still (±70%) — only triggered for severe outliers
+// where the chapter's structural integrity is at risk.
+// REFERENCE_TARGET still anchors the proportional scaling so explicit
+// chapterWordCount in book config still has effect.
 const REFERENCE_TARGET = 2200;
-const SOFT_RANGE_DELTA = 300;
-const HARD_RANGE_DELTA = 600;
+const SOFT_RANGE_DELTA = 770;   // ±35% at REFERENCE_TARGET (was 300, ~14%)
+const HARD_RANGE_DELTA = 1540;  // ±70% at REFERENCE_TARGET (was 600, ~27%)
 
 export function countChapterLength(
   content: string,

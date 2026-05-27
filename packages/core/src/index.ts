@@ -249,8 +249,7 @@ export { LengthNormalizerAgent, type NormalizeLengthInput, type NormalizeLengthO
 export { ContinuityAuditor, type AuditResult, type AuditIssue } from "./agents/continuity.js";
 export { ReviserAgent, DEFAULT_REVISE_MODE, type ReviseOutput, type ReviseMode } from "./agents/reviser.js";
 export { PolisherAgent, type PolishChapterInput, type PolishChapterOutput } from "./agents/polisher.js";
-export { RadarAgent, type RadarResult, type RadarRecommendation } from "./agents/radar.js";
-export { FanqieRadarSource, QidianRadarSource, TextRadarSource, type RadarSource, type PlatformRankings, type RankingEntry } from "./agents/radar-source.js";
+// [removed] RadarAgent / radar-source — networked-fiction platform rankings (Qidian/Fanqie) not applicable to literary writing
 export { readGenreProfile, readBookRules, listAvailableGenres, getBuiltinGenresDir } from "./agents/rules-reader.js";
 export { buildWriterSystemPrompt, buildGoldenOpeningDiscipline } from "./agents/writer-prompts.js";
 export { analyzeAITells, type AITellResult, type AITellIssue } from "./agents/ai-tells.js";
@@ -264,9 +263,104 @@ export { parseWriterOutput, parseCreativeOutput, type ParsedWriterOutput, type C
 export { buildSettlerSystemPrompt, buildSettlerUserPrompt } from "./agents/settler-prompts.js";
 export { parseSettlementOutput, type SettlementOutput } from "./agents/settler-parser.js";
 export { parseSettlerDeltaOutput, type SettlerDeltaOutput } from "./agents/settler-delta-parser.js";
-export { FanficCanonImporter, type FanficCanonOutput } from "./agents/fanfic-canon-importer.js";
-export { getFanficDimensionConfig, FANFIC_DIMENSIONS, type FanficDimensionConfig } from "./agents/fanfic-dimensions.js";
-export { buildFanficCanonSection, buildCharacterVoiceProfiles, buildFanficModeInstructions } from "./agents/fanfic-prompt-sections.js";
+// [removed] Fanfic canon importer / dimensions / prompt sections — fanfiction features not applicable to original literary work
+
+// Atelier literary additions ----------------------------------------------------
+export {
+  ThematicFrameworkSchema,
+  CharacterPsychologySchema,
+  SymbolicNetworkSchema,
+  SocialTopologySchema,
+  NarrativeRhythmSchema,
+  HistoricalContextSchema,
+  ValueTensionSchema,
+  ThematicVariationSchema,
+  PsychologicalOriginSchema,
+  ArcBeatSchema,
+  RelationDynamicsSchema,
+  CharacterCardSchema,
+  ImageNodeSchema,
+  EconomicLayerSchema,
+  PowerNetworkSchema,
+  CulturalSystemSchema,
+  SpatialGeographySchema,
+  ChapterRhythmSchema,
+  PolicyAnchorSchema,
+  LITERARY_TRUTH_FILES,
+  type ThematicFramework,
+  type CharacterPsychology,
+  type SymbolicNetwork,
+  type SocialTopology,
+  type NarrativeRhythm,
+  type HistoricalContext,
+  type ValueTension,
+  type ThematicVariation,
+  type PsychologicalOrigin,
+  type ArcBeat,
+  type RelationDynamics,
+  type CharacterCard,
+  type ImageNode,
+  type EconomicLayer,
+  type PowerNetwork,
+  type CulturalSystem,
+  type SpatialGeography,
+  type ChapterRhythm,
+  type PolicyAnchor,
+  type LiteraryTruthFileKey,
+} from "./models/literary-truth-files.js";
+
+export {
+  ThematicAnalystAgent,
+  type ThematicAnalystInput,
+  type ThematicAnalystOutput,
+} from "./agents/thematic-analyst.js";
+export {
+  CharacterPsychologistAgent,
+  type CharacterPsychologistInput,
+  type CharacterPsychologistOutput,
+} from "./agents/character-psychologist.js";
+export {
+  SymbolWeaverAgent,
+  type SymbolWeaverInput,
+  type SymbolWeaverOutput,
+} from "./agents/symbol-weaver.js";
+export {
+  SocialTopologistAgent,
+  type SocialTopologistInput,
+  type SocialTopologistOutput,
+} from "./agents/social-topologist.js";
+
+export {
+  EditorialAuditor,
+  type EditorialAuditInput,
+  type EditorialAuditResult,
+} from "./agents/editorial-auditor.js";
+
+export {
+  loadLiteraryTruthBundle,
+  formatLiteraryTruthContext,
+  type LiteraryTruthBundle,
+  type LiteraryTruthSummary,
+  type TruthContextMode,
+} from "./state/literary-truth-context.js";
+
+export {
+  literaryTruthFilePath,
+  readLiteraryTruthFile,
+  writeLiteraryTruthFile,
+  readThematicFramework,
+  readCharacterPsychology,
+  readSymbolicNetwork,
+  readSocialTopology,
+  readNarrativeRhythm,
+  readHistoricalContext,
+  writeThematicFramework,
+  writeCharacterPsychology,
+  writeSymbolicNetwork,
+  writeSocialTopology,
+  writeNarrativeRhythm,
+  writeHistoricalContext,
+} from "./state/literary-truth-store.js";
 
 // Utils
 export { isNewLayoutBook } from "./utils/outline-paths.js";

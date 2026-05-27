@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { Check, Plus, Search, X } from "lucide-react";
+import { Check, Plus, Search, X, Sparkles } from "lucide-react";
 import { GROUP_LABELS, GROUP_ORDER, GROUP_SHORT_LABELS } from "../constants/service-groups";
 import { useServiceStore } from "../store/service";
 import type { EndpointGroup, ServiceInfo } from "../store/service";
+import { useApi, putApi } from "../hooks/use-api";
 
 interface Nav {
   toDashboard: () => void;
@@ -21,25 +22,68 @@ function SkeletonCard() {
   );
 }
 
-function ServiceCard({ svc, onClick }: { svc: ServiceInfo; onClick: () => void }) {
+function ServiceCard({
+  svc,
+  onClick,
+  isActive,
+  defaultModel,
+  onMakeActive,
+}: {
+  svc: ServiceInfo;
+  onClick: () => void;
+  isActive: boolean;
+  defaultModel: string | null;
+  onMakeActive?: () => void;
+}) {
   return (
-    <button
-      onClick={onClick}
+    <div
       className={[
-        "flex min-h-[92px] flex-col gap-2 rounded-lg border p-5 text-left transition-all hover:shadow-sm",
-        svc.connected
-          ? "border-emerald-500/30 bg-emerald-500/[0.03]"
-          : "border-dashed border-border/40",
+        "relative flex min-h-[110px] flex-col gap-2 rounded-lg border p-5 text-left transition-all",
+        isActive
+          ? "border-primary/50 bg-primary/5 shadow-sm shadow-primary/10"
+          : svc.connected
+            ? "border-emerald-500/30 bg-emerald-500/[0.03]"
+            : "border-dashed border-border/40",
       ].join(" ")}
     >
-      <div className="flex items-center justify-between gap-3">
-        <span className="truncate text-sm font-medium">{svc.label}</span>
-        <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${svc.connected ? "bg-emerald-500" : "bg-muted-foreground/30"}`} />
-      </div>
-      <span className="text-xs text-muted-foreground/60">
-        {svc.connected ? "已连接" : "未配置"}
-      </span>
-    </button>
+      {/* Active marker — top-right */}
+      {isActive && (
+        <span className="absolute top-2 right-2 inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] rounded bg-primary text-primary-foreground">
+          <Sparkles size={9} />
+          使用中
+        </span>
+      )}
+
+      <button onClick={onClick} className="text-left">
+        <div className="flex items-center justify-between gap-3 mb-1">
+          <span className="truncate text-sm font-medium hover:text-primary transition-colors">{svc.label}</span>
+          {!isActive && (
+            <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${svc.connected ? "bg-emerald-500" : "bg-muted-foreground/30"}`} />
+          )}
+        </div>
+        <span className="text-xs text-muted-foreground/60">
+          {svc.connected ? "已连接" : "未配置"}
+        </span>
+      </button>
+
+      {/* Default model line */}
+      {svc.connected && defaultModel && (
+        <div className="mt-auto pt-1 text-[11px] font-mono text-muted-foreground truncate">
+          {defaultModel}
+        </div>
+      )}
+
+      {/* "Make active" button when connected but not active */}
+      {svc.connected && !isActive && onMakeActive && (
+        <button
+          onClick={onMakeActive}
+          className="absolute bottom-2 right-2 text-[10px] text-primary hover:underline"
+          title="切换为当前活动模型服务"
+        >
+          切为默认 →
+        </button>
+      )}
+    </div>
   );
 }
 
@@ -49,6 +93,33 @@ export function ServiceListPage({ nav }: { nav: Nav }) {
   const fetchServices = useServiceStore((s) => s.fetchServices);
 
   useEffect(() => { void fetchServices(); }, [fetchServices]);
+
+  // Active service + per-service default model (UX 3 — model overview).
+  const { data: cfg, refetch: refetchCfg } = useApi<{
+    service: string | null;
+    defaultModel: string | null;
+    services: ReadonlyArray<{ service: string; defaultModel?: string | null; model?: string | null }>;
+  }>("/services/config");
+
+  const activeService = cfg?.service ?? null;
+  // Per-service model. Studio's config stores defaultModel at top level for
+  // the active service, and per-service entries may carry their own.
+  const modelByService = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const s of cfg?.services ?? []) {
+      const m = s.defaultModel ?? s.model;
+      if (m) map.set(s.service, m);
+    }
+    // Active service's top-level defaultModel takes precedence if set.
+    if (activeService && cfg?.defaultModel) map.set(activeService, cfg.defaultModel);
+    return map;
+  }, [cfg?.services, cfg?.defaultModel, activeService]);
+
+  const makeActive = async (serviceId: string) => {
+    await putApi("/services/config", { service: serviceId });
+    void refetchCfg();
+    void fetchServices();
+  };
 
   const [query, setQuery] = useState("");
   const [selectedGroups, setSelectedGroups] = useState<Set<EndpointGroup>>(new Set());
@@ -131,6 +202,26 @@ export function ServiceListPage({ nav }: { nav: Nav }) {
       </div>
 
       <h1 className="font-serif text-2xl">服务商管理</h1>
+
+      {/* Active model overview banner (UX 3) */}
+      <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 flex items-center gap-3 flex-wrap">
+        <Sparkles size={16} className="text-primary shrink-0" />
+        <div className="flex-1 min-w-[180px]">
+          <div className="text-xs text-muted-foreground">当前用于生成的模型</div>
+          {activeService ? (
+            <div className="text-sm">
+              <span className="font-medium">{activeService}</span>
+              <span className="text-muted-foreground mx-1.5">·</span>
+              <span className="font-mono text-xs">{cfg?.defaultModel ?? "(未设置默认模型)"}</span>
+            </div>
+          ) : (
+            <div className="text-sm text-muted-foreground">尚未设置活动服务</div>
+          )}
+        </div>
+        <div className="text-xs text-muted-foreground">
+          {connectedCount} / {bankServices.length + customServices.length} 个服务已连接
+        </div>
+      </div>
 
       <div className="relative">
         <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/40" />
@@ -222,6 +313,9 @@ export function ServiceListPage({ nav }: { nav: Nav }) {
                 <ServiceCard
                   key={svc.service}
                   svc={svc}
+                  isActive={activeService === svc.service}
+                  defaultModel={modelByService.get(svc.service) ?? null}
+                  onMakeActive={svc.connected && activeService !== svc.service ? () => void makeActive(svc.service) : undefined}
                   onClick={() => nav.toServiceDetail(svc.service)}
                 />
               ))}
@@ -240,6 +334,9 @@ export function ServiceListPage({ nav }: { nav: Nav }) {
               <ServiceCard
                 key={svc.service}
                 svc={svc}
+                isActive={activeService === svc.service}
+                defaultModel={modelByService.get(svc.service) ?? null}
+                onMakeActive={svc.connected && activeService !== svc.service ? () => void makeActive(svc.service) : undefined}
                 onClick={() => nav.toServiceDetail(svc.service)}
               />
             ))}

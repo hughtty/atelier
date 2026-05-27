@@ -1,4 +1,4 @@
-import { normalizePlatformOrOther, type Platform } from "@actalk/inkos-core";
+import { normalizePlatformOrOther, type Platform } from "@atelier/core";
 
 export interface StudioCreateBookBody {
   readonly title: string;

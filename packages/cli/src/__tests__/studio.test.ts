@@ -58,8 +58,8 @@ describe("studio command", () => {
     const jsEntry = join(
       "/project",
       "node_modules",
-      "@actalk",
-      "inkos-studio",
+      "@atelier",
+      "studio",
       "dist",
       "api",
       "index.js",

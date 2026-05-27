@@ -1,25 +1,21 @@
 {
-  "name": "inkos",
-  "version": "1.3.10",
+  "name": "atelier",
+  "version": "0.1.0",
   "private": true,
-  "description": "Autonomous AI novel writing CLI agent — 10-agent pipeline that writes, audits, and revises novels with continuity tracking",
+  "description": "Atelier — autonomous serious-literary writing system: multi-agent pipeline for thematic depth, psychological realism, symbolic networks, social topology, and 20-dimension literary audit (incl. anti-AI-trace).",
   "keywords": [
-    "ai-novel-writing",
+    "literary-fiction",
+    "serious-fiction",
     "ai-writing-agent",
-    "novel-generator",
-    "autonomous-writing",
-    "litrpg",
-    "progression-fantasy",
     "multi-agent",
+    "thematic-analysis",
     "creative-writing-ai",
-    "openclaw-skill",
+    "literary-audit",
+    "anti-ai-detection",
     "cli"
   ],
   "license": "AGPL-3.0-only",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/Narcooo/inkos"
-  },
+  "private_repository_note": "Forked from InkOS (github.com/Narcooo/inkos, AGPL-3.0). Refactored for serious literary fiction.",
   "scripts": {
     "build": "pnpm -r build",
     "dev": "pnpm -r --parallel dev",
@@ -38,5 +34,8 @@
       "@mariozechner/pi-ai": "0.67.1",
       "@mariozechner/pi-agent-core": "0.67.1"
     }
+  },
+  "devDependencies": {
+    "playwright": "^1.60.0"
   }
 }
