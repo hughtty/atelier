@@ -1,9 +1,9 @@
 <p align="center">
-  <img src="assets/logo.svg" width="140" height="140" alt="Atelier Logo">
+  <img src="assets/logo.svg?v=2" width="140" height="140" alt="Atelier Logo">
 </p>
 
 <p align="center">
-  <img src="assets/atelier-text.svg" width="320" alt="Atelier">
+  <img src="assets/atelier-text.svg?v=2" width="320" alt="Atelier">
 </p>
 
 <p align="center">
