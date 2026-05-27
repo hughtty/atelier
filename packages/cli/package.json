@@ -25,7 +25,7 @@
   "license": "AGPL-3.0-only",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Narcooo/inkos.git",
+    "url": "https://github.com/hughtty/atelier.git",
     "directory": "packages/cli"
   },
   "scripts": {
