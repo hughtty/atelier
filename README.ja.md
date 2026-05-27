@@ -1,6 +1,6 @@
 <p align="center">
-  <img src="assets/logo.svg" width="120" height="120" alt="InkOS Logo">
-  <img src="assets/inkos-text.svg" width="240" height="65" alt="InkOS">
+  <img src="assets/logo-atelier.svg" width="120" height="120" alt="Atelier Logo">
+  <img src="assets/atelier-text.svg" width="320" alt="Atelier">
 </p>
 
 <h1 align="center">自律型小説執筆 AIエージェント</h1>
