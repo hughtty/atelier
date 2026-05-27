@@ -1,59 +1,63 @@
 <p align="center">
-  <img src="assets/logo.svg" width="120" height="120" alt="Atelier Logo">
-</p>
-
-<h1 align="center">Atelier · 自主 AI 严肃文学写作系统<br><sub>Multi-Agent Pipeline for Serious Literary Fiction</sub></h1>
-
-<p align="center">
-  <a href="LICENSE"><img src="https://img.shields.io/badge/License-AGPL%20v3-blue.svg" alt="License: AGPL-3.0"></a>
-  <img src="https://img.shields.io/badge/TypeScript-5.8-blue?logo=typescript" alt="TypeScript">
-  <img src="https://img.shields.io/badge/React-19-blue?logo=react" alt="React">
-  <img src="https://img.shields.io/badge/Node-%3E%3D20-green?logo=node.js" alt="Node">
+  <img src="assets/logo.svg" width="140" height="140" alt="Atelier Logo">
 </p>
 
 <p align="center">
-  <b>从网文工业化工具到严肃文学创作助手的范式迁移。</b>
+  <img src="assets/atelier-text.svg" width="320" alt="Atelier">
 </p>
 
 <p align="center">
-  多 Agent 接力写作 · 20 维度文学审计 · 6 类结构化长期记忆 · 去 AI 味管线
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-AGPL%20v3-64748b.svg" alt="License: AGPL-3.0"></a>
+  <img src="https://img.shields.io/badge/TypeScript-5.8-38bdf8?logo=typescript" alt="TypeScript">
+  <img src="https://img.shields.io/badge/React-19-38bdf8?logo=react" alt="React">
+  <img src="https://img.shields.io/badge/Node-%3E%3D20-818cf8?logo=node.js" alt="Node">
 </p>
+
+## 这是什么？
+
+**Atelier 是一个面向严肃文学创作的自主多 Agent 写作系统。**
+
+它能基于作者提供的创作简报，自动构建主题骨架、人物心理档案、意象网络和社会拓扑，并通过 20 维度的文学审计自动审校每一章草稿，在"去 AI 味"的同时保留文学性。
 
 ---
 
-## 为什么做 Atelier？
+## 与 InkOS 的关系
 
-市面上的 AI 写作工具分为两类：
+Atelier **硬分叉**自 [InkOS](https://github.com/Narcooo/inkos)（AGPL-3.0）。我们在 InkOS 的网络文学基础设施之上，进行了彻底的**范式迁移**：
 
-- **网文工具**：追求日更万字，输出同质化爽文，AI 味浓重
-- **通用助手**：缺乏长篇叙事的长期记忆，写到第 10 章就忘记第 2 章埋下的伏笔
-
-**严肃文学创作者的真实需求被忽略了**：
-- 他们需要的不只是"生成文字"，而是**保持主题一致性、人物心理深度、意象网络的长期演进**
-- 他们害怕的不仅是"写不出来"，更是"写出来的东西像 AI 写的"
-- 他们需要的不是一次性 prompt，而是一套**可演进、可审计、可回滚的创作控制面**
-
-> Atelier 的终极目标不是让 AI 代替作家，而是让作家能用 AI 守住更复杂的创作意图。
-
----
-
-## 快速预览
-
-### Atelier Studio 工作台
-
-| 首页 · 书籍管理 | 建书向导 · 6 步 DNA 构建 | 创作圣经 · 主题框架 |
+| | **InkOS** | **Atelier** |
 |---|---|---|
-| ![Dashboard](assets/screenshot-atelier-dashboard.png) | ![Create](assets/screenshot-atelier-create.png) | ![Thematic](assets/screenshot-atelier-settings-thematic.png) |
+| **目标** | 中文网文工业化量产 | 严肃文学精品创作 |
+| **核心指标** | 日更字数、平台 trending | 主题一致性、心理深度、意象网络密度 |
+| **审计维度** | 33 维度连续性检查 | **+10 维度文学审计**（留白、潜台词、群像独立性等） |
+| **长期记忆** | 7 个通用真相文件 | **+6 个文学真相文件**（主题、心理、意象、社会拓扑、节奏、历史） |
+| **体裁** | 玄幻/仙侠/都市等 12 个网文体裁 | 社会现实主义/家庭史诗/存在主义等 **8 个严肃文学体裁** |
+| **自动化** | 守护进程后台自动量产 | **人工门控 + Agent 辅助**，每章必经审计 |
+| **平台集成** | 市场雷达、平台格式导出 | **移除**，回归创作本体 |
 
-| 创作圣经 · 人物心理 | 写作工作台 · Chat 式创作 | 服务商管理 · 多模型路由 |
-|---|---|---|
-| ![Character](assets/screenshot-atelier-settings-character.png) | ![Chat](assets/screenshot-atelier-chat.png) | ![Services](assets/screenshot-atelier-services.png) |
+> 两种场景需要的控制面完全不同，无法在同一套产品里兼容。因此我们选择硬分叉，从底层重构记忆模型、审计体系和创作管线，而非功能堆叠。
 
 ---
 
-## 核心特性
+## 预览
 
-### 1. 文学真相文件 —— AI 的长期记忆工程
+<p align="center">
+  <img src="assets/screenshot-atelier-dashboard.png" width="90%" alt="Atelier Studio Dashboard">
+</p>
+
+<p align="center">
+  <em>Atelier Studio —— 书籍管理与创作入口</em>
+</p>
+
+| 建书向导 · 6 步 DNA 构建 | 创作圣经 · 主题框架 | 写作工作台 · Chat 式创作 |
+|---|---|---|
+| ![Create](assets/screenshot-atelier-create.png) | ![Thematic](assets/screenshot-atelier-settings-thematic.png) | ![Chat](assets/screenshot-atelier-chat.png) |
+
+---
+
+## 核心设计
+
+### 文学真相文件 —— AI 的长期记忆工程
 
 为严肃文学定义了 6 个结构化真相文件，作为"唯一事实来源"：
 
@@ -66,34 +70,31 @@
 | **叙事节奏** | 章与章之间情绪曲线断裂 | 每章标注密度、强度等级、呼吸点 |
 | **历史语境** | 时代错误、物质感缺失 | 政策锚点、物质锚点、语言锚点、时代错位防护 |
 
-**设计决策**：JSON 为权威来源，Markdown 为人类投影；LLM 输出 JSON delta，代码层做 immutable apply + Zod 校验后写入，防止"坏数据雪崩"。
+**技术决策**：JSON 为权威来源，Markdown 为人类投影；LLM 输出 JSON delta，代码层做 immutable apply + Zod 校验后写入，防止"坏数据雪崩"。
 
-### 2. EditorialAuditor —— 三层质量门禁
+### EditorialAuditor —— 三层质量门禁
 
 ```
-Layer 1: 连续性审计（33 维度）
+连续性审计（33 维度）
   → 角色记忆、物资连续性、伏笔回收、大纲偏离、叙事节奏
 
-Layer 2: AI 痕迹检测（规则基，9 维度）
+AI 痕迹检测（规则基，9 维度）
   → 疲劳词表、句式单调、过度总结、高频副词
 
-Layer 3: 文学维度审计（10 维度，LLM 评估）
+文学维度审计（10 维度，LLM 评估）
   → 主题一致性、心理深度、矛盾性优先、群像独立性、意象网络、
      留白与克制、节奏呼吸、对话潜台词、感官具体性、结局承认丧失
 ```
 
 审计不通过 → 自动进入"修订 → 再审计"循环，直到关键问题清零。
 
-### 3. 严肃文学体裁系统
+### 严肃文学体裁系统
 
-从 12 个网文体裁（玄幻/仙侠/都市等）重构为 8 个严肃文学体裁：
+8 个内置体裁，每个定义章节类型、疲劳词表、叙事禁忌、语言铁律、审计维度：
 
-- 社会现实主义 · 乡村衰败 · 心理现实主义 · 家庭史诗
-- 存在主义 · 生态文学 · 历史小说 · 城乡迁移
+社会现实主义 · 乡村衰败 · 心理现实主义 · 家庭史诗 · 存在主义 · 生态文学 · 历史小说 · 城乡迁移
 
-每个体裁定义：章节类型、疲劳词表、叙事禁忌、语言铁律、审计维度。
-
-### 4. 三端一致交互
+### 三端一致交互
 
 | 界面 | 入口 | 核心体验 |
 |---|---|---|
@@ -206,15 +207,6 @@ atelier agent "把林烬改成张三，全量替换"
 | `atelier doctor` | 诊断配置问题 |
 | `atelier studio` | 启动 Web 工作台 |
 | `atelier tui` | 启动 TUI 仪表盘 |
-
----
-
-## 项目文档
-
-| 文档 | 说明 |
-|---|---|
-| [`PROJECT_SHOWCASE.md`](PROJECT_SHOWCASE.md) | 产品综合描述（求职展示用） |
-| [`PROJECT_PROGRESS.md`](PROJECT_PROGRESS.md) | 当前开发进度与待办事项 |
 
 ---
 
